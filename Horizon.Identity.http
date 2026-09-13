@@ -1,0 +1,6 @@
+@Horizon.Identity_HostAddress = http://localhost:5005
+
+GET {{Horizon.Identity_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
