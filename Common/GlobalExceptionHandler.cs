@@ -15,6 +15,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
         {
             ValidationException => (StatusCodes.Status400BadRequest, "Error de validación"),
             EmailAlreadyExistsException => (StatusCodes.Status409Conflict, "Conflicto"),
+            UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "No autorizado"),
             _ => (StatusCodes.Status500InternalServerError, "Error interno del servidor")
         };
 
