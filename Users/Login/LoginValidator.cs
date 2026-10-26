@@ -1,10 +1,11 @@
-﻿namespace Horizon.Identity.Users.Login;
+namespace Horizon.Identity.Users.Login;
 
-//Validar los Campos del Record
-public class LoginValidator : AbstractValidator<LoginCommand>
+public class LoginValidator : AbstractValidator<LoginUserCommand>
 {
     public LoginValidator()
     {
+        // En login solo validamos la forma; la contraseña real se comprueba
+        // en el handler con BCrypt.
         RuleFor(x => x.Email)
             .NotEmpty().WithMessage("El correo es requerido.")
             .EmailAddress().WithMessage("Formato de correo inválido.");

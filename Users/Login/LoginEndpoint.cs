@@ -1,8 +1,12 @@
-﻿namespace Horizon.Identity.Users.Login;
+namespace Horizon.Identity.Users.Login;
 
-//Record de Creacion del Usuario 
-public record LoginRequest(string Email, string Password);
-//Respuesta
+// Lo que envía el cliente.
+public record LoginRequest(
+    string Email,
+    string Password
+);
+
+// Lo que devolvemos: el frontend espera exactamente { "token": "..." }.
 public record LoginResponse(string Token);
 
 public class LoginEndpoint : ICarterModule
@@ -12,18 +16,20 @@ public class LoginEndpoint : ICarterModule
         app.MapPost("/api/identity/users/login",
             async (LoginRequest request, ISender sender) =>
             {
-                //Adaptamos el request a nuestro command
-                var command = request.Adapt<LoginCommand>();
-                //Lo enviamos a su respectivo Handler
+                var command = request.Adapt<LoginUserCommand>();
+
                 var result = await sender.Send(command);
+
                 var response = result.Adapt<LoginResponse>();
 
                 return Results.Ok(response);
             })
         .WithName("LoginUser")
         .Produces<LoginResponse>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status401Unauthorized)
-        .WithSummary("Inicia sesión y devuelve un JWT")
+        .WithSummary("Inicia sesión y devuelve un token JWT")
+        .WithDescription("Valida el correo y la contraseña del usuario y emite un JWT válido por 1 hora.")
         .WithTags("Users");
     }
 }

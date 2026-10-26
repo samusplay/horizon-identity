@@ -1,62 +1,38 @@
-﻿using Microsoft.IdentityModel.JsonWebTokens;
-using Microsoft.IdentityModel.Tokens;
-using System.Security.Claims;
-using System.Security.Cryptography;
+using Horizon.Identity.Common.Auth;
+using Horizon.Identity.Common.Exceptions;
 
 namespace Horizon.Identity.Users.Login;
 
-//El Comando
-public record LoginCommand(
+// Command (CQRS): credenciales que llegan desde el endpoint.
+public record LoginUserCommand(
     string Email,
     string Password
-) : ICommand<LoginResult>;
+) : ICommand<LoginUserResult>;
 
-//El Resultado
-public record LoginResult(string Token);
+// Resultado: el token que el frontend guarda en la cookie httpOnly.
+public record LoginUserResult(string Token);
 
-//El Handler
-internal class LoginHandler(IdentityDbContext dbContext, IConfiguration configuration)
-    : ICommandHandler<LoginCommand, LoginResult>
+internal class LoginHandler(IdentityDbContext dbContext, ITokenProvider tokenProvider)
+    : ICommandHandler<LoginUserCommand, LoginUserResult>
 {
-    public async Task<LoginResult> Handle(LoginCommand command, CancellationToken cancellationToken)
+    public async Task<LoginUserResult> Handle(LoginUserCommand command, CancellationToken cancellationToken)
     {
+        // Normalizamos igual que en el registro para que el correo coincida
+        // aunque el usuario escriba mayúsculas o espacios.
+        var email = command.Email.Trim().ToLowerInvariant();
+
         var user = await dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email == command.Email, cancellationToken);
+            .SingleOrDefaultAsync(u => u.Email == email, cancellationToken);
 
-        if (user is null || !BCrypt.Net.BCrypt.Verify(command.Password, user.PasswordHash))
-            throw new UnauthorizedAccessException("Credenciales inválidas.");
+        // Mismo error para correo inexistente y contraseña incorrecta.
+        if (user is null)
+            throw new InvalidCredentialsException();
 
-        var token = GenerateToken(user);
+        if (!BCrypt.Net.BCrypt.Verify(command.Password, user.PasswordHash))
+            throw new InvalidCredentialsException();
 
-        return new LoginResult(token);
-    }
+        var token = tokenProvider.Create(user);
 
-    private string GenerateToken(User user)
-    {
-        var privateKeyPath = Path.Combine(AppContext.BaseDirectory, "Security", "Keys", "private.pem");
-        var rsa = RSA.Create();
-        rsa.ImportFromPem(File.ReadAllText(privateKeyPath));
-
-        var signingCredentials = new SigningCredentials(
-            new RsaSecurityKey(rsa), SecurityAlgorithms.RsaSha256);
-
-        var claims = new Dictionary<string, object>
-        {
-            [JwtRegisteredClaimNames.Sub] = user.Id.ToString(),
-            [ClaimTypes.Role] = user.Role.ToString(),
-            [JwtRegisteredClaimNames.Email] = user.Email
-        };
-
-        var descriptor = new SecurityTokenDescriptor
-        {
-            Issuer = configuration["Jwt:Issuer"],
-            Audience = configuration["Jwt:Audience"],
-            Claims = claims,
-            Expires = DateTime.UtcNow.AddMinutes(60),
-            SigningCredentials = signingCredentials
-        };
-
-        var handler = new JsonWebTokenHandler();
-        return handler.CreateToken(descriptor);
+        return new LoginUserResult(token);
     }
 }

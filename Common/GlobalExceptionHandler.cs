@@ -9,15 +9,20 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
-        logger.LogError(exception, "Excepción no controlada");
-
         var (statusCode, title) = exception switch
         {
             ValidationException => (StatusCodes.Status400BadRequest, "Error de validación"),
+            InvalidCredentialsException => (StatusCodes.Status401Unauthorized, "Credenciales inválidas"),
+            InvalidResetTokenException => (StatusCodes.Status400BadRequest, "Enlace inválido"),
             EmailAlreadyExistsException => (StatusCodes.Status409Conflict, "Conflicto"),
-            UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "No autorizado"),
             _ => (StatusCodes.Status500InternalServerError, "Error interno del servidor")
         };
+
+        // Los 4xx son peticiones rechazadas esperadas; no deben llenar el log de errores.
+        if (statusCode >= StatusCodes.Status500InternalServerError)
+            logger.LogError(exception, "Excepción no controlada");
+        else
+            logger.LogWarning("Petición rechazada ({StatusCode}): {Message}", statusCode, exception.Message);
 
         httpContext.Response.StatusCode = statusCode;
 

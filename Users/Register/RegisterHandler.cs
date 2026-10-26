@@ -35,12 +35,15 @@ internal class RegisterHandler(IdentityDbContext dbContext)
     {
         //Aqui dentro del metodo vamos manejar la logica
 
+        //Normalizamos el correo para que login y registro usen el mismo formato.
+        var email = command.Email.Trim().ToLowerInvariant();
+
         //Buscamos si el email Existe
         var emailExists = await dbContext.Users
-            .AnyAsync(u => u.Email == command.Email, cancellationToken);
+            .AnyAsync(u => u.Email == email, cancellationToken);
 
         if (emailExists)
-            throw new EmailAlreadyExistsException(command.Email);
+            throw new EmailAlreadyExistsException(email);
 
         //Encriptamos la contraseña
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(command.Password);
@@ -48,7 +51,7 @@ internal class RegisterHandler(IdentityDbContext dbContext)
         //Creamos el Nuevo Usuario
         var user = new User
         {
-            Email = command.Email,
+            Email = email,
             PasswordHash = passwordHash,
             Role = Enum.Parse<UserRole>(command.Role)
 
