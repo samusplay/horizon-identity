@@ -14,6 +14,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
         var (statusCode, title) = exception switch
         {
             ValidationException => (StatusCodes.Status400BadRequest, "Error de validación"),
+            InvalidResetTokenException => (StatusCodes.Status400BadRequest, "Token inválido"),
             EmailAlreadyExistsException => (StatusCodes.Status409Conflict, "Conflicto"),
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "No autorizado"),
             _ => (StatusCodes.Status500InternalServerError, "Error interno del servidor")

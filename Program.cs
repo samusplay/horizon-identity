@@ -1,6 +1,6 @@
 
 using Horizon.Identity.Common;
-
+using Horizon.Identity.Common.Messaging;
 using Horizon.Identity.Common.Behaviors;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +20,9 @@ builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBeh
 
 // Mapster
 builder.Services.AddMapster();
+// Mensajería (RabbitMQ) para publicar eventos hacia Notifications
+builder.Services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
+
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
