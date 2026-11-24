@@ -33,9 +33,17 @@ internal class LoginHandler(IdentityDbContext dbContext, IConfiguration configur
 
     private string GenerateToken(User user)
     {
-        var privateKeyPath = Path.Combine(AppContext.BaseDirectory, "Security", "Keys", "private.pem");
+        // En AWS la llave llega como secreto (variable Jwt__PrivateKeyPem desde SSM);
+        // en local no existe esa variable y se sigue leyendo el archivo, así docker compose no cambia
+        var privateKeyPem = configuration["Jwt:PrivateKeyPem"];
+        if (string.IsNullOrWhiteSpace(privateKeyPem))
+        {
+            var privateKeyPath = Path.Combine(AppContext.BaseDirectory, "Security", "Keys", "private.pem");
+            privateKeyPem = File.ReadAllText(privateKeyPath);
+        }
+
         var rsa = RSA.Create();
-        rsa.ImportFromPem(File.ReadAllText(privateKeyPath));
+        rsa.ImportFromPem(privateKeyPem);
 
         var signingCredentials = new SigningCredentials(
             new RsaSecurityKey(rsa), SecurityAlgorithms.RsaSha256);
